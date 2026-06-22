@@ -12,8 +12,13 @@ module.exports = (nombreAgenteActual, queryBusqueda, resultadoColaborador, resul
     `).join('');
 
     if (queryBusqueda && resultadosTickets.length === 0 && !resultadoColaborador) {
-        listaTickets = '<p style="color:#ef4444; text-align:center; padding:20px; font-weight:600;">❌ No se encontró ningún colaborador (por Cédula/Teléfono) ni ningún Caso con ese ID.</p>';
+        listaTickets = '<p style="color:#94a3b8; text-align:center; padding:20px;">No hay historial de casos previos para este criterio.</p>';
     }
+
+    // Determinar si la búsqueda parece una cédula o teléfono para precargarla
+    const esNumerico = /^\d+$/.test(queryBusqueda);
+    const sugerenciaCedula = (esNumerico && queryBusqueda.length >= 6 && queryBusqueda.length <= 11) ? queryBusqueda : '';
+    const sugerenciaTelefono = (esNumerico && (queryBusqueda.length === 9 || queryBusqueda.length === 10 || queryBusqueda.startsWith('3'))) ? queryBusqueda : '';
 
     return `
         <!DOCTYPE html>
@@ -35,8 +40,12 @@ module.exports = (nombreAgenteActual, queryBusqueda, resultadoColaborador, resul
                 h2 { margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; color: #0f172a; }
                 .field { margin-bottom: 12px; font-size: 15px; }
                 label { display: block; margin: 12px 0 4px; font-weight: 600; font-size: 14px; }
-                input, textarea, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; }
+                input, textarea, select { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 5px; }
                 .btn-submit { background: #16a34a; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 15px; font-size: 15px; }
+                .btn-submit:hover { background: #15803d; }
+                .btn-new { background: #ea580c; color: white; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 15px; margin-top: 15px; }
+                .btn-new:hover { background: #c2410c; }
+                .no-found-box { text-align: center; padding: 30px 10px; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; color: #92400e; }
             </style>
         </head>
         <body>
@@ -55,16 +64,18 @@ module.exports = (nombreAgenteActual, queryBusqueda, resultadoColaborador, resul
                         <button type="submit" class="btn-search">Buscar</button>
                     </form>
                 </div>
+                
                 ${queryBusqueda ? `
                 <div class="grid">
                     <div class="card">
-                        <h2>Perfil del Colaborador</h2>
                         ${resultadoColaborador ? `
+                            <h2>Perfil del Colaborador</h2>
                             <div class="field"><strong>Nombre:</strong> ${resultadoColaborador.nombre}</div>
                             <div class="field"><strong>Cédula:</strong> ${resultadoColaborador.cedula}</div>
                             <div class="field"><strong>Cargo:</strong> ${resultadoColaborador.cargo}</div>
                             <div class="field"><strong>Área:</strong> ${resultadoColaborador.area}</div>
                             <div class="field"><strong>Teléfono:</strong> ${resultadoColaborador.telefono}</div>
+                            
                             <h3 style="margin-top:25px; border-top:1px solid #f1f5f9; padding-top:15px;">Registrar una nueva atención</h3>
                             <form action="/registrar-caso" method="POST">
                                 <input type="hidden" name="telefono" value="${resultadoColaborador.telefono}">
@@ -77,12 +88,40 @@ module.exports = (nombreAgenteActual, queryBusqueda, resultadoColaborador, resul
                                     <option value="Redes e Internet">Redes e Internet</option>
                                 </select>
                                 <label>Asunto</label>
-                                <input type="text" name="titulo" required>
+                                <input type="text" name="titulo" placeholder="Ej: Falla en clave de red" required>
                                 <label>Notas de Solución</label>
-                                <textarea name="descripcion" rows="3" required></textarea>
+                                <textarea name="descripcion" rows="3" placeholder="Detalles de la solución técnica..." required></textarea>
                                 <button type="submit" class="btn-submit">Guardar Caso</button>
                             </form>
-                        ` : `<p style="color:#94a3b8;">Búsqueda por ID de caso realizada.</p>`}
+                        ` : `
+                            <div id="box-no-existe" class="no-found-box">
+                                <h3 style="margin-top:0;">⚠️ Colaborador no registrado</h3>
+                                <p>No encontramos perfiles asociados a la consulta <strong>"${queryBusqueda}"</strong>.</p>
+                                <button type="button" onclick="mostrarFormularioRegistro()" class="btn-new">➕ Crear Colaborador</button>
+                            </div>
+
+                            <div id="form-registro-colaborador" style="display: none;">
+                                <h2>🆕 Registrar Nuevo Colaborador</h2>
+                                <form action="/crear-colaborador" method="POST">
+                                    <label>Cédula (Identificación)</label>
+                                    <input type="text" name="cedula" value="${sugerenciaCedula}" required>
+                                    
+                                    <label>Nombre Completo</label>
+                                    <input type="text" name="nombre" placeholder="Ej: Juan Pérez" required>
+                                    
+                                    <label>Cargo</label>
+                                    <input type="text" name="cargo" placeholder="Ej: Auxiliar de Archivo" required>
+                                    
+                                    <label>Área / Proceso</label>
+                                    <input type="text" name="area" placeholder="Ej: Gestión Humana" required>
+                                    
+                                    <label>Número de Teléfono</label>
+                                    <input type="text" name="telefono" value="${sugerenciaTelefono}" placeholder="Ej: 3007654321" required>
+                                    
+                                    <button type="submit" class="btn-submit" style="background:#ea580c;">Guardar Perfil en Repositorio</button>
+                                </form>
+                            </div>
+                        `}
                     </div>
                     <div class="card">
                         <h2>Casos e Historial Encontrados</h2>
@@ -90,6 +129,13 @@ module.exports = (nombreAgenteActual, queryBusqueda, resultadoColaborador, resul
                     </div>
                 </div>` : `<div style="text-align:center; padding:40px; color:#64748b;">💡 Ingrese Cédula, Teléfono o ID del Caso.</div>`}
             </div>
+
+            <script>
+                function mostrarFormularioRegistro() {
+                    document.getElementById('box-no-existe').style.display = 'none';
+                    document.getElementById('form-registro-colaborador').style.display = 'block';
+                }
+            </script>
         </body>
         </html>
     `;

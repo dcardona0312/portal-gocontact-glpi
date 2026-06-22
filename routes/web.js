@@ -20,6 +20,7 @@ router.get('/logout', authController.logout);
 router.get('/atencion', authController.verificarSesion, ticketController.showAtencion);
 router.post('/registrar-caso', authController.verificarSesion, ticketController.registrarCaso);
 router.get('/admin', authController.verificarSesion, adminController.showAdmin);
+router.post('/crear-colaborador', authController.verificarSesion, ticketController.crearColaborador);
 
 // Exportamos el enrutador para que el index.js principal pueda leerlo
 module.exports = router;

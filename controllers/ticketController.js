@@ -56,3 +56,27 @@ exports.registrarCaso = (req, res) => {
         }
     );
 };
+// Inserta un nuevo colaborador en el repositorio general
+exports.crearColaborador = (req, res) => {
+    const { cedula, nombre, cargo, area, telefono } = req.body;
+    
+    db.run(`INSERT INTO colaboradores (cedula, telefono, nombre, cargo, area) VALUES (?, ?, ?, ?, ?)`,
+        [cedula, telefono, nombre, cargo, area],
+        function (err) {
+            if (err) {
+                return res.send(`
+                    <script>
+                        alert('❌ Error: El teléfono o cédula ya están asignados a otra persona.');
+                        window.history.back();
+                    </script>
+                `);
+            }
+            res.send(`
+                <script>
+                    alert('✔️ Colaborador creado con éxito en el repositorio.');
+                    window.location.href = '/atencion?buscar=${cedula}';
+                </script>
+            `);
+        }
+    );
+};
